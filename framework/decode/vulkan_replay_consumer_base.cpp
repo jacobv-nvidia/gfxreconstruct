@@ -159,7 +159,7 @@ VulkanReplayConsumerBase::VulkanReplayConsumerBase(std::shared_ptr<application::
                                                    const VulkanReplayOptions&                options) :
     loader_handle_(nullptr),
     get_instance_proc_addr_(nullptr), create_instance_proc_(nullptr), application_(application), options_(options),
-    loading_trim_state_(false), have_imported_semaphores_(false), create_surface_count_(0), fps_info_(nullptr)
+    loading_trim_state_(false), have_imported_semaphores_(false), create_surface_count_(0)
 {
     assert(application_ != nullptr);
     assert(options.create_resource_allocator != nullptr);
@@ -266,9 +266,9 @@ void VulkanReplayConsumerBase::ProcessStateEndMarker(uint64_t frame_number)
 {
     GFXRECON_UNREFERENCED_PARAMETER(frame_number);
     loading_trim_state_ = false;
-    if (fps_info_ != nullptr)
+    if (application_ != nullptr)
     {
-        fps_info_->ProcessStateEndMarker(frame_number);
+        application_->ProcessStateEndMarker(frame_number);
     }
 }
 
