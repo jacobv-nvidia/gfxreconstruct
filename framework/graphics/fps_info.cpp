@@ -58,11 +58,13 @@ FpsInfo::FpsInfo(uint64_t measurement_start_frame,
                  uint64_t measurement_end_frame,
                  bool     has_measurement_range,
                  bool     quit_after_range,
-                 bool     flush_measurement_range) :
+                 bool     flush_measurement_range,
+                 uint32_t looping_end_after_count) :
     measurement_start_frame_(measurement_start_frame),
     measurement_end_frame_(measurement_end_frame), measurement_start_time_(0), measurement_end_time_(0),
     quit_after_range_(quit_after_range), flush_measurement_range_(flush_measurement_range),
-    has_measurement_range_(has_measurement_range), started_measurement_(false), ended_measurement_(false)
+    looping_end_after_count_(looping_end_after_count), has_measurement_range_(has_measurement_range),
+    started_measurement_(false), ended_measurement_(false)
 {}
 
 void FpsInfo::BeginFile()
@@ -162,6 +164,21 @@ void FpsInfo::LogToConsole()
                                measurement_start_frame_,
                                measurement_end_frame_);
     }
+}
+
+bool FpsInfo::ShouldLoop(uint32_t loop_number)
+{
+    bool should_loop = true;
+
+    if (looping_end_after_count_ > 0)
+    {
+        if (loop_number >= looping_end_after_count_)
+        {
+            should_loop = false;
+        }
+    }
+
+    return should_loop;
 }
 
 GFXRECON_END_NAMESPACE(graphics)

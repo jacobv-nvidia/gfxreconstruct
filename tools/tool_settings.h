@@ -102,6 +102,7 @@ const char kMeasurementRangeArgument[]           = "--measurement-frame-range";
 const char kQuitAfterMeasurementRangeOption[]    = "--quit-after-measurement-range";
 const char kFlushMeasurementRangeOption[]        = "--flush-measurement-range";
 const char kEnableUseCapturedSwapchainIndices[]  = "--use-captured-swapchain-indices";
+const char kLoopingEndAfterCountArgument[]       = "--looping-end-after-count";
 const char kFormatArgument[]                     = "--format";
 const char kIncludeBinariesOption[]              = "--include-binaries";
 const char kExpandFlagsOption[]                  = "--expand-flags";
@@ -287,6 +288,19 @@ static uint32_t GetPauseFrame(const gfxrecon::util::ArgumentParser& arg_parser)
     }
 
     return pause_frame;
+}
+
+static uint32_t GetLoopingEndAfterCount(const gfxrecon::util::ArgumentParser& arg_parser)
+{
+    uint32_t    looping_end_after_count = 1;
+    const auto& value                   = arg_parser.GetArgumentValue(kLoopingEndAfterCountArgument);
+
+    if (!value.empty())
+    {
+        looping_end_after_count = std::stoi(value);
+    }
+
+    return looping_end_after_count;
 }
 
 static WsiPlatform GetWsiPlatform(const gfxrecon::util::ArgumentParser& arg_parser)

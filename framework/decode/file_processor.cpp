@@ -37,9 +37,9 @@ GFXRECON_BEGIN_NAMESPACE(gfxrecon)
 GFXRECON_BEGIN_NAMESPACE(decode)
 
 FileProcessor::FileProcessor() :
-    file_header_{}, file_descriptor_(nullptr), current_frame_number_(0), bytes_read_(0),
-    error_state_(kErrorInvalidFileDescriptor), annotation_handler_(nullptr), compressor_(nullptr), block_index_(0),
-    api_call_index_(0), block_limit_(0)
+    file_header_{}, file_descriptor_(nullptr), current_frame_number_(0), current_loop_number_(0), bytes_read_(0),
+    bytes_read_header_(0), error_state_(kErrorInvalidFileDescriptor), annotation_handler_(nullptr),
+    compressor_(nullptr), block_index_(0), api_call_index_(0), block_limit_(0)
 {}
 
 FileProcessor::FileProcessor(uint64_t block_limit) : FileProcessor()
@@ -83,6 +83,8 @@ bool FileProcessor::Initialize(const std::string& filename)
 
         if (success)
         {
+            bytes_read_header_ = bytes_read_;
+
             filename_    = filename;
             error_state_ = kErrorNone;
         }
@@ -140,6 +142,24 @@ bool FileProcessor::ProcessAllFrames()
     }
 
     return (error_state_ == kErrorNone);
+}
+
+bool FileProcessor::Loop()
+{
+    bool success = true;
+
+    if (bytes_read_header_ > 0)
+    {
+        block_index_ = 0;
+        success      = util::platform::FileSeek(file_descriptor_, bytes_read_header_, util::platform::FileSeekSet);
+        ++current_loop_number_;
+    }
+    else
+    {
+        success = false;
+    }
+
+    return success;
 }
 
 bool FileProcessor::ContinueDecoding()

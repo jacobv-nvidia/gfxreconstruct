@@ -118,7 +118,8 @@ void android_main(struct android_app* app)
                                                      static_cast<uint64_t>(end_frame),
                                                      has_mfr,
                                                      replay_options.quit_after_measurement_frame_range,
-                                                     replay_options.flush_measurement_frame_range);
+                                                     replay_options.flush_measurement_frame_range,
+                                                     1);
 
                 replay_consumer.SetFatalErrorHandler([](const char* message) { throw std::runtime_error(message); });
 

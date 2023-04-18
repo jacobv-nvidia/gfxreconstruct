@@ -39,7 +39,8 @@ class FpsInfo
             uint64_t measurement_end_frame   = std::numeric_limits<uint64_t>::max(),
             bool     has_measurement_range   = false,
             bool     quit_after_range        = false,
-            bool     flush_measurement_range = false);
+            bool     flush_measurement_range = false,
+            uint32_t looping_end_after_count = 1);
 
     void LogToConsole();
 
@@ -51,6 +52,8 @@ class FpsInfo
     void EndFrame(uint64_t file_processor_frame);
     void EndFile(uint64_t end_file_processor_frame);
     void EndLoad(uint64_t file_processor_frame);
+
+    bool ShouldLoop(uint32_t file_processor_loop);
 
   private:
     uint64_t start_time_;
@@ -67,6 +70,8 @@ class FpsInfo
     bool has_measurement_range_;
     bool quit_after_range_;
     bool flush_measurement_range_;
+
+    uint32_t looping_end_after_count_;
 
     bool started_measurement_;
     bool ended_measurement_;
