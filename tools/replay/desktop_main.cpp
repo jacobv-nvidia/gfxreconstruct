@@ -185,6 +185,8 @@ int main(int argc, const char** argv)
             while (true)
             {
                 // Loop setup
+                fps_info.BeginLoop();
+
                 gfxrecon::decode::VulkanReplayConsumer vulkan_replay_consumer(application, vulkan_replay_options);
                 gfxrecon::decode::VulkanDecoder        vulkan_decoder;
 
@@ -245,6 +247,8 @@ int main(int argc, const char** argv)
                     break;
                 }
 
+                fps_info.EndLoop();
+
                 if (vulkan_replay_options.enable_vulkan)
                 {
                     vulkan_decoder.RemoveConsumer(&vulkan_replay_consumer);
@@ -262,7 +266,7 @@ int main(int argc, const char** argv)
                 // Looping processing
                 if (!file_processor.EntireFileWasProcessed())
                 {
-                    GFXRECON_WRITE_CONSOLE("File was not completely processed, aborting loop")
+                    GFXRECON_LOG_INFO("File was not completely processed, aborting loop")
                     return_code = -1;
                     break;
                 }
