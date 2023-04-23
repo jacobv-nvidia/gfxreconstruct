@@ -103,6 +103,7 @@ const char kQuitAfterMeasurementRangeOption[]    = "--quit-after-measurement-ran
 const char kFlushMeasurementRangeOption[]        = "--flush-measurement-range";
 const char kEnableUseCapturedSwapchainIndices[]  = "--use-captured-swapchain-indices";
 const char kLoopingEndAfterCountArgument[]       = "--looping-end-after-count";
+const char kLoopingEndAfterDurationArgument[]    = "--looping-end-after-duration";
 const char kPreserveWindowsOption[]              = "--preserve-windows";
 const char kFormatArgument[]                     = "--format";
 const char kIncludeBinariesOption[]              = "--include-binaries";
@@ -291,17 +292,29 @@ static uint32_t GetPauseFrame(const gfxrecon::util::ArgumentParser& arg_parser)
     return pause_frame;
 }
 
-static uint32_t GetLoopingEndAfterCount(const gfxrecon::util::ArgumentParser& arg_parser)
+static void GetLoopingEndOptions(const gfxrecon::util::ArgumentParser& arg_parser,
+                                 uint32_t&                             looping_end_after_count,
+                                 uint64_t&                             looping_end_after_duration)
 {
-    uint32_t    looping_end_after_count = 1;
-    const auto& value                   = arg_parser.GetArgumentValue(kLoopingEndAfterCountArgument);
+    looping_end_after_count    = 0;
+    looping_end_after_duration = 0;
 
-    if (!value.empty())
+    const auto& count = arg_parser.GetArgumentValue(kLoopingEndAfterCountArgument);
+    if (!count.empty())
     {
-        looping_end_after_count = std::stoi(value);
+        looping_end_after_count = std::stoi(count);
     }
 
-    return looping_end_after_count;
+    const auto& duration = arg_parser.GetArgumentValue(kLoopingEndAfterDurationArgument);
+    if (!duration.empty())
+    {
+        looping_end_after_duration = std::stoi(duration);
+    }
+
+    if (count.empty() && duration.empty())
+    {
+        looping_end_after_count = 1;
+    }
 }
 
 static WsiPlatform GetWsiPlatform(const gfxrecon::util::ArgumentParser& arg_parser)
