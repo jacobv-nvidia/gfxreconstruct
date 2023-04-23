@@ -135,11 +135,13 @@ int main(int argc, const char** argv)
             gfxrecon::decode::VulkanTrackedObjectInfoTable tracked_object_info_table;
             gfxrecon::decode::VulkanReplayOptions          vulkan_replay_options =
                 GetVulkanReplayOptions(arg_parser, filename, &tracked_object_info_table);
+            gfxrecon::decode::VulkanReplayConsumer::VulkanWindowList vulkan_windows;
 
 #if defined(D3D12_SUPPORT)
             gfxrecon::decode::Dx12TrackedObjectInfoTable dx_tracked_object_info_table;
             gfxrecon::decode::DxReplayOptions            dx_replay_options =
                 GetDxReplayOptions(arg_parser, filename, &dx_tracked_object_info_table);
+            gfxrecon::decode::Dx12ReplayConsumer::DxWindowList dx_windows;
 
             if (dx_replay_options.enable_d3d12)
             {
@@ -188,7 +190,9 @@ int main(int argc, const char** argv)
                 fps_info.BeginLoop();
 
                 gfxrecon::decode::VulkanReplayConsumer vulkan_replay_consumer(application, vulkan_replay_options);
-                gfxrecon::decode::VulkanDecoder        vulkan_decoder;
+                vulkan_replay_consumer.SetInactiveWindows(vulkan_windows);
+
+                gfxrecon::decode::VulkanDecoder vulkan_decoder;
 
                 if (vulkan_replay_options.enable_vulkan)
                 {
@@ -201,7 +205,9 @@ int main(int argc, const char** argv)
 
 #if defined(D3D12_SUPPORT)
                 gfxrecon::decode::Dx12ReplayConsumer dx12_replay_consumer(application, dx_replay_options);
-                gfxrecon::decode::Dx12Decoder        dx12_decoder;
+                dx12_replay_consumer.SetInactiveWindows(dx_windows);
+
+                gfxrecon::decode::Dx12Decoder dx12_decoder;
 
                 if (dx_replay_options.enable_d3d12)
                 {
@@ -215,6 +221,11 @@ int main(int argc, const char** argv)
 
                 // Main replay processing
                 application->Run();
+
+                vulkan_windows = vulkan_replay_consumer.GetInactiveWindows();
+#if defined(D3D12_SUPPORT)
+                dx_windows = dx12_replay_consumer.GetInactiveWindows();
+#endif
 
                 // Error checking and loop cleanup
                 if ((file_processor.GetCurrentFrameNumber() > 0) &&
@@ -267,7 +278,7 @@ int main(int argc, const char** argv)
                 if (!file_processor.EntireFileWasProcessed())
                 {
                     GFXRECON_LOG_INFO("File was not completely processed, aborting loop")
-                    return_code = -1;
+                    application->SetWasFinalLoop(true);
                     break;
                 }
 
@@ -280,6 +291,7 @@ int main(int argc, const char** argv)
                 }
                 else
                 {
+                    application->SetWasFinalLoop(true);
                     break;
                 }
             }

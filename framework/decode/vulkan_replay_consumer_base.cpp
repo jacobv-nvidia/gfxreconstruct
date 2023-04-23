@@ -221,12 +221,14 @@ VulkanReplayConsumerBase::~VulkanReplayConsumerBase()
         swapchain_.get());
 
     // Destroy any windows that were created for Vulkan surfaces.
-    for (auto window : active_windows_)
+    if (application_ != nullptr)
     {
-        auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
-        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
-        assert(window_factory);
-        window_factory->Destroy(window);
+        DestroyWindows(active_windows_);
+
+        if (application_->GetWasFinalLoop())
+        {
+            DestroyWindows(inactive_windows_);
+        }
     }
 
     // Finally destroy vkInstances
@@ -240,6 +242,18 @@ VulkanReplayConsumerBase::~VulkanReplayConsumerBase()
     if (loader_handle_ != nullptr)
     {
         graphics::ReleaseLoader(loader_handle_);
+    }
+}
+
+void VulkanReplayConsumerBase::DestroyWindows(VulkanWindowList& windows)
+{
+    for (auto window : windows)
+    {
+        auto wsi_context = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
+        assert(wsi_context);
+        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
+        assert(window_factory);
+        window_factory->Destroy(window);
     }
 }
 
@@ -1883,11 +1897,31 @@ VkResult VulkanReplayConsumerBase::CreateSurface(InstanceInfo*                  
         assert(wsi_context);
         auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
         assert(window_factory);
-        auto window =
-            window_factory
-                ? window_factory->Create(
-                      kDefaultWindowPositionX, kDefaultWindowPositionY, kDefaultWindowWidth, kDefaultWindowHeight)
-                : nullptr;
+
+        Window* window = nullptr;
+
+        if (options_.preserve_windows && !inactive_windows_.empty())
+        {
+            // Try to find an inactive window that matches the desired wsi extension.
+            for (auto inactive_window : inactive_windows_)
+            {
+                if (inactive_window->GetWsiExtension() == wsi_extension)
+                {
+                    window = inactive_window;
+                    inactive_windows_.erase(window);
+                    break;
+                }
+            }
+        }
+
+        if (window == nullptr)
+        {
+            window =
+                window_factory
+                    ? window_factory->Create(
+                          kDefaultWindowPositionX, kDefaultWindowPositionY, kDefaultWindowWidth, kDefaultWindowHeight)
+                    : nullptr;
+        }
 
         if (window == nullptr)
         {
@@ -1910,7 +1944,14 @@ VkResult VulkanReplayConsumerBase::CreateSurface(InstanceInfo*                  
         }
         else
         {
-            window_factory->Destroy(window);
+            if (options_.preserve_windows)
+            {
+                inactive_windows_.insert(window);
+            }
+            else
+            {
+                window_factory->Destroy(window);
+            }
         }
     }
     else
@@ -5934,11 +5975,20 @@ void VulkanReplayConsumerBase::OverrideDestroySurfaceKHR(
     {
         window->DestroySurface(GetInstanceTable(instance), instance, surface);
         active_windows_.erase(window);
-        auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
-        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
-        if (window_factory)
+
+        if (options_.preserve_windows)
         {
-            window_factory->Destroy(window);
+            inactive_windows_.insert(window);
+        }
+        else
+        {
+            auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
+            auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
+
+            if (window_factory)
+            {
+                window_factory->Destroy(window);
+            }
         }
     }
     else

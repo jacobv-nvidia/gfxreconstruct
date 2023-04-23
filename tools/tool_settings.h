@@ -103,6 +103,7 @@ const char kQuitAfterMeasurementRangeOption[]    = "--quit-after-measurement-ran
 const char kFlushMeasurementRangeOption[]        = "--flush-measurement-range";
 const char kEnableUseCapturedSwapchainIndices[]  = "--use-captured-swapchain-indices";
 const char kLoopingEndAfterCountArgument[]       = "--looping-end-after-count";
+const char kPreserveWindowsOption[]              = "--preserve-windows";
 const char kFormatArgument[]                     = "--format";
 const char kIncludeBinariesOption[]              = "--include-binaries";
 const char kExpandFlagsOption[]                  = "--expand-flags";
@@ -754,6 +755,11 @@ static void GetReplayOptions(gfxrecon::decode::ReplayOptions& options, const gfx
     }
 
     IsForceWindowed(options, arg_parser);
+
+    if (arg_parser.IsOptionSet(kPreserveWindowsOption))
+    {
+        options.preserve_windows = true;
+    }
 }
 
 static gfxrecon::decode::VulkanReplayOptions
