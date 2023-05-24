@@ -1902,10 +1902,17 @@ VkResult VulkanReplayConsumerBase::CreateSurface(InstanceInfo*                  
 
         if (options_.preserve_windows && !inactive_windows_.empty())
         {
-            // Try to find an inactive window that matches the desired wsi extension.
+            // Try to find an inactive window that matches the desired WSI extension.
             for (auto inactive_window : inactive_windows_)
             {
-                if (inactive_window->GetWsiExtension() == wsi_extension)
+                // Convert WSI extension if one was specifically selected on the command line.
+                std::string surface_wsi_extension = wsi_extension;
+                if (!application_->GetWsiCliExtension().empty())
+                {
+                    surface_wsi_extension = application_->GetWsiCliExtension();
+                }
+
+                if (inactive_window->GetWsiExtension() == surface_wsi_extension)
                 {
                     window = inactive_window;
                     inactive_windows_.erase(window);
@@ -2255,7 +2262,7 @@ VulkanReplayConsumerBase::OverrideCreateInstance(VkResult original_result,
             // If a specific WSI extension was selected on the command line we need to make sure that extension is
             // loaded and other WSI extensions are disabled
             assert(application_);
-            const bool override_wsi_extensions = !application_->GetWsiCliContext().empty();
+            const bool override_wsi_extensions = !application_->GetWsiCliExtension().empty();
 
             for (const auto& itr : application_->GetWsiContexts())
             {
