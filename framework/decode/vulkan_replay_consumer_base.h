@@ -41,7 +41,6 @@
 #include "format/platform_types.h"
 #include "generated/generated_vulkan_dispatch_table.h"
 #include "generated/generated_vulkan_consumer.h"
-#include "graphics/fps_info.h"
 #include "util/defines.h"
 #include "util/logging.h"
 
@@ -69,9 +68,16 @@ GFXRECON_BEGIN_NAMESPACE(decode)
 class VulkanReplayConsumerBase : public VulkanConsumer
 {
   public:
+    typedef std::unordered_set<Window*> VulkanWindowList;
+
+  public:
     VulkanReplayConsumerBase(std::shared_ptr<application::Application> application, const VulkanReplayOptions& options);
 
     virtual ~VulkanReplayConsumerBase() override;
+
+    VulkanWindowList GetInactiveWindows() const { return inactive_windows_; }
+
+    void SetInactiveWindows(VulkanWindowList const& windows) { inactive_windows_ = windows; }
 
     virtual void Process_ExeFileInfo(util::filepath::FileInfo& info_record) override
     {
@@ -79,8 +85,6 @@ class VulkanReplayConsumerBase : public VulkanConsumer
     }
 
     void SetFatalErrorHandler(std::function<void(const char*)> handler) { fatal_error_handler_ = handler; }
-
-    void SetFpsInfo(graphics::FpsInfo* fps_info) { fps_info_ = fps_info; }
 
     virtual void WaitDevicesIdle() override;
 
@@ -1036,9 +1040,9 @@ class VulkanReplayConsumerBase : public VulkanConsumer
 
     void WriteScreenshots(const Decoded_VkPresentInfoKHR* meta_info) const;
 
-  private:
-    typedef std::unordered_set<Window*> ActiveWindows;
+    void DestroyWindows(VulkanWindowList& windows);
 
+  private:
     struct HardwareBufferInfo
     {
         format::HandleId memory_id;
@@ -1075,7 +1079,8 @@ class VulkanReplayConsumerBase : public VulkanConsumer
     std::function<void(const char*)>                                 fatal_error_handler_;
     std::shared_ptr<application::Application>                        application_;
     VulkanObjectInfoTable                                            object_info_table_;
-    ActiveWindows                                                    active_windows_;
+    VulkanWindowList                                                 active_windows_;
+    VulkanWindowList                                                 inactive_windows_;
     const VulkanReplayOptions                                        options_;
     bool                                                             loading_trim_state_;
     bool                                                             have_imported_semaphores_;
@@ -1086,7 +1091,6 @@ class VulkanReplayConsumerBase : public VulkanConsumer
     std::unique_ptr<VulkanSwapchain>                                 swapchain_;
     std::string                                                      screenshot_file_prefix_;
     int32_t                                                          create_surface_count_;
-    graphics::FpsInfo*                                               fps_info_;
 
     // Used to track if any shadow sync objects are active to avoid checking if not needed
     std::unordered_set<VkSemaphore> shadow_semaphores_;

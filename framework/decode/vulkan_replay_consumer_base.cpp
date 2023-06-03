@@ -159,7 +159,7 @@ VulkanReplayConsumerBase::VulkanReplayConsumerBase(std::shared_ptr<application::
                                                    const VulkanReplayOptions&                options) :
     loader_handle_(nullptr),
     get_instance_proc_addr_(nullptr), create_instance_proc_(nullptr), application_(application), options_(options),
-    loading_trim_state_(false), have_imported_semaphores_(false), create_surface_count_(0), fps_info_(nullptr)
+    loading_trim_state_(false), have_imported_semaphores_(false), create_surface_count_(0)
 {
     assert(application_ != nullptr);
     assert(options.create_resource_allocator != nullptr);
@@ -221,12 +221,14 @@ VulkanReplayConsumerBase::~VulkanReplayConsumerBase()
         swapchain_.get());
 
     // Destroy any windows that were created for Vulkan surfaces.
-    for (auto window : active_windows_)
+    if (application_ != nullptr)
     {
-        auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
-        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
-        assert(window_factory);
-        window_factory->Destroy(window);
+        DestroyWindows(active_windows_);
+
+        if (application_->GetWasFinalLoop())
+        {
+            DestroyWindows(inactive_windows_);
+        }
     }
 
     // Finally destroy vkInstances
@@ -240,6 +242,18 @@ VulkanReplayConsumerBase::~VulkanReplayConsumerBase()
     if (loader_handle_ != nullptr)
     {
         graphics::ReleaseLoader(loader_handle_);
+    }
+}
+
+void VulkanReplayConsumerBase::DestroyWindows(VulkanWindowList& windows)
+{
+    for (auto window : windows)
+    {
+        auto wsi_context = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
+        assert(wsi_context);
+        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
+        assert(window_factory);
+        window_factory->Destroy(window);
     }
 }
 
@@ -266,9 +280,9 @@ void VulkanReplayConsumerBase::ProcessStateEndMarker(uint64_t frame_number)
 {
     GFXRECON_UNREFERENCED_PARAMETER(frame_number);
     loading_trim_state_ = false;
-    if (fps_info_ != nullptr)
+    if (application_ != nullptr)
     {
-        fps_info_->ProcessStateEndMarker(frame_number);
+        application_->ProcessStateEndMarker(frame_number);
     }
 }
 
@@ -1883,11 +1897,38 @@ VkResult VulkanReplayConsumerBase::CreateSurface(InstanceInfo*                  
         assert(wsi_context);
         auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
         assert(window_factory);
-        auto window =
-            window_factory
-                ? window_factory->Create(
-                      kDefaultWindowPositionX, kDefaultWindowPositionY, kDefaultWindowWidth, kDefaultWindowHeight)
-                : nullptr;
+
+        Window* window = nullptr;
+
+        if (options_.preserve_windows && !inactive_windows_.empty())
+        {
+            // Try to find an inactive window that matches the desired WSI extension.
+            for (auto inactive_window : inactive_windows_)
+            {
+                // Convert WSI extension if one was specifically selected on the command line.
+                std::string surface_wsi_extension = wsi_extension;
+                if (!application_->GetWsiCliExtension().empty())
+                {
+                    surface_wsi_extension = application_->GetWsiCliExtension();
+                }
+
+                if (inactive_window->GetWsiExtension() == surface_wsi_extension)
+                {
+                    window = inactive_window;
+                    inactive_windows_.erase(window);
+                    break;
+                }
+            }
+        }
+
+        if (window == nullptr)
+        {
+            window =
+                window_factory
+                    ? window_factory->Create(
+                          kDefaultWindowPositionX, kDefaultWindowPositionY, kDefaultWindowWidth, kDefaultWindowHeight)
+                    : nullptr;
+        }
 
         if (window == nullptr)
         {
@@ -1910,7 +1951,14 @@ VkResult VulkanReplayConsumerBase::CreateSurface(InstanceInfo*                  
         }
         else
         {
-            window_factory->Destroy(window);
+            if (options_.preserve_windows)
+            {
+                inactive_windows_.insert(window);
+            }
+            else
+            {
+                window_factory->Destroy(window);
+            }
         }
     }
     else
@@ -2214,7 +2262,7 @@ VulkanReplayConsumerBase::OverrideCreateInstance(VkResult original_result,
             // If a specific WSI extension was selected on the command line we need to make sure that extension is
             // loaded and other WSI extensions are disabled
             assert(application_);
-            const bool override_wsi_extensions = !application_->GetWsiCliContext().empty();
+            const bool override_wsi_extensions = !application_->GetWsiCliExtension().empty();
 
             for (const auto& itr : application_->GetWsiContexts())
             {
@@ -5934,11 +5982,20 @@ void VulkanReplayConsumerBase::OverrideDestroySurfaceKHR(
     {
         window->DestroySurface(GetInstanceTable(instance), instance, surface);
         active_windows_.erase(window);
-        auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
-        auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
-        if (window_factory)
+
+        if (options_.preserve_windows)
         {
-            window_factory->Destroy(window);
+            inactive_windows_.insert(window);
+        }
+        else
+        {
+            auto wsi_context    = application_ ? application_->GetWsiContext(window->GetWsiExtension()) : nullptr;
+            auto window_factory = wsi_context ? wsi_context->GetWindowFactory() : nullptr;
+
+            if (window_factory)
+            {
+                window_factory->Destroy(window);
+            }
         }
     }
     else

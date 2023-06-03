@@ -31,11 +31,12 @@ const char kOptions[] =
     "opcd|--omit-pipeline-cache-data,--remove-unsupported,--validate,--debug-device-lost,--create-dummy-allocations,--"
     "screenshot-all,--onhb|--omit-null-hardware-buffers,--qamr|--quit-after-measurement-"
     "range,--fmr|--flush-measurement-range,--use-captured-swapchain-indices,--dcp,--discard-cached-psos,"
-    "--dx12-override-object-names";
+    "--dx12-override-object-names,--preserve-windows";
 const char kArguments[] =
     "--log-level,--log-file,--gpu,--gpu-group,--pause-frame,--wsi,--surface-index,-m|--memory-translation,"
     "--replace-shaders,--screenshots,--denied-messages,--allowed-messages,--screenshot-format,--"
-    "screenshot-dir,--screenshot-prefix,--mfr|--measurement-frame-range,--fw|--force-windowed";
+    "screenshot-dir,--screenshot-prefix,--mfr|--measurement-frame-range,--fw|--force-windowed,"
+    "--looping-end-after-count,--looping-end-after-duration";
 
 static void PrintUsage(const char* exe_name)
 {
@@ -61,6 +62,8 @@ static void PrintUsage(const char* exe_name)
     GFXRECON_WRITE_CONSOLE("\t\t\t[-m <mode> | --memory-translation <mode>]");
     GFXRECON_WRITE_CONSOLE("\t\t\t[--use-captured-swapchain-indices]");
     GFXRECON_WRITE_CONSOLE("\t\t\t[--fw <width,height> | --force-windowed <width,height>]");
+    GFXRECON_WRITE_CONSOLE("\t\t\t[--looping-end-after-count <N>] [--looping-end-after-duration <N>]");
+    GFXRECON_WRITE_CONSOLE("\t\t\t[--preserve-windows]");
 #if defined(WIN32)
     GFXRECON_WRITE_CONSOLE("\t\t\t[--log-level <level>] [--log-file <file>] [--log-debugview]");
 #if defined(_DEBUG)
@@ -122,6 +125,17 @@ static void PrintUsage(const char* exe_name)
     GFXRECON_WRITE_CONSOLE("          \t\treturned by vkEnumeratePhysicalDevices.  Replay may fail");
     GFXRECON_WRITE_CONSOLE("          \t\tif the specified device is not compatible with the");
     GFXRECON_WRITE_CONSOLE("          \t\toriginal capture devices.");
+    GFXRECON_WRITE_CONSOLE("  --looping-end-after-count <N>");
+    GFXRECON_WRITE_CONSOLE("          \t\tSpecify how many times the replay should be run. By default, it");
+    GFXRECON_WRITE_CONSOLE("          \t\twill be run once. A value of 0 will loop the replay indefinitely.");
+    GFXRECON_WRITE_CONSOLE("  --looping-end-after-duration <N>");
+    GFXRECON_WRITE_CONSOLE("          \t\tIn seconds, how long the replay should be looped. A value of 0 will");
+    GFXRECON_WRITE_CONSOLE("          \t\tloop the replay indefinitely. When this condition is satisfied, the");
+    GFXRECON_WRITE_CONSOLE("          \t\tcurrent loop will still be completed. If both looping end conditions");
+    GFXRECON_WRITE_CONSOLE("          \t\tare specified, the replay will stop looping when either is met.");
+    GFXRECON_WRITE_CONSOLE("  --preserve-windows");
+    GFXRECON_WRITE_CONSOLE("          \t\tEnables windows to be kept open between loops. The default is to");
+    GFXRECON_WRITE_CONSOLE("          \t\tcreate/destroy windows with each surface/swapchain.");
 #if defined(WIN32)
     GFXRECON_WRITE_CONSOLE("")
     GFXRECON_WRITE_CONSOLE("Windows-only:")
